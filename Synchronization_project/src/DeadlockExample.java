@@ -1,56 +1,38 @@
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-class DeadlockExample {
-    private final Lock lock1 = new ReentrantLock();
-    private final Lock lock2 = new ReentrantLock();
 
-    // This method creates a potential deadlock scenario.
-    public void method1() {
-        lock1.lock();
-        System.out.println("Thread 1: Acquired lock1...");
-        try {
-            Thread.sleep(100); // Simulate some work
-            lock2.lock();
-            try {
-                System.out.println("Thread 1: Acquired lock2...");
-            } finally {
-                lock2.unlock();
+public class DeadlockExample {
+    private static final Object lock1 = new Object();
+    private static final Object lock2 = new Object();
+
+    public static void main(String[] args) {
+        Thread thread1 = new Thread(() -> {
+            synchronized (lock1) {
+                System.out.println("Thread 1: Holding lock 1...");
+
+                try { Thread.sleep(100); } catch (InterruptedException e) {}
+
+                System.out.println("Thread 1: Waiting for lock 2...");
+                synchronized (lock2) {
+                    System.out.println("Thread 1: Holding lock 1 & 2...");
+                }
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            lock1.unlock();
-        }
-    }
+        });
 
-    public void method2() {
-        lock2.lock();
-        System.out.println("Thread 2: Acquired lock2...");
-        try {
-            Thread.sleep(100); // Simulate some work
-            lock1.lock();
-            try {
-                System.out.println("Thread 2: Acquired lock1...");
-            } finally {
-                lock1.unlock();
+        Thread thread2 = new Thread(() -> {
+            synchronized (lock2) {
+                System.out.println("Thread 2: Holding lock 2...");
+
+                try { Thread.sleep(100); } catch (InterruptedException e) {}
+
+                System.out.println("Thread 2: Waiting for lock 1...");
+                synchronized (lock1) {
+                    System.out.println("Thread 2: Holding lock 2 & 1...");
+                }
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            lock2.unlock();
-        }
-    }
+        });
 
-    public static void main(String[] args) throws InterruptedException {
-        DeadlockExample example = new DeadlockExample();
-
-        Thread t1 = new Thread(example::method1);
-        Thread t2 = new Thread(example::method2);
-
-        t1.start();
-        t2.start();
-        t1.join();
-        t2.join();
+        thread1.start();
+        thread2.start();
     }
 }
+
